@@ -31,11 +31,15 @@ const sendResetEmail = async (email, resetToken) => {
         pass: process.env.SMTP_PASS,
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2'
       },
-      connectionTimeout: 10000, // 10 seconds
-      socketTimeout: 10000,
-      greetingTimeout: 10000
+      connectionTimeout: 15000, // 15 seconds
+      socketTimeout: 15000,
+      greetingTimeout: 15000,
+      pool: {
+        maxConnections: 1
+      }
     });
 
     // Reset link URL (with token as query parameter)
@@ -77,14 +81,32 @@ const sendResetEmail = async (email, resetToken) => {
       `,
     };
 
+    // Verify transporter connection
+    console.log('🔗 Verifying SMTP connection...');
+    await transporter.verify();
+    console.log('✓ SMTP connection verified');
+
     // Send email
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
     console.log('✓ Reset email sent to:', email);
+    console.log('  Message ID:', info.messageId);
     return true;
   } catch (error) {
     console.error('✗ Error sending email:', error.message);
+    console.error('✗ Error code:', error.code);
     console.error('✗ Full error details:', error);
-    throw new Error(`Failed to send reset email: ${error.message}`);
+    
+    // Provide more helpful error messages
+    let userMessage = `Failed to send reset email: ${error.message}`;
+    if (error.code === 'EAUTH') {
+      userMessage = 'Email authentication failed. Please check SMTP credentials.';
+    } else if (error.code === 'ECONNREFUSED') {
+      userMessage = 'Unable to connect to email server. Please try again later.';
+    } else if (error.code === 'ETIMEDOUT') {
+      userMessage = 'Email server connection timed out. Please try again later.';
+    }
+    
+    throw new Error(userMessage);
   }
 };
 

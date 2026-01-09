@@ -40,8 +40,8 @@ api.interceptors.response.use(
 // --- Auth Endpoints ---
 export const authAPI = {
   // Register: Backend mein fields check kar lena (email, password)
-  register: (email, password, confirmPassword) =>
-    api.post('/auth/register', { email, password, confirmPassword }),
+  register: (firstName, lastName, email, password, confirmPassword) =>
+    api.post('/auth/register', { firstName, lastName, email, password, confirmPassword }),
   
   // Login
   login: (email, password) =>

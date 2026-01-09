@@ -5,6 +5,8 @@ import { authAPI, setToken } from '../utils/api';
 export default function Register() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -28,7 +30,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      if (!formData.email || !formData.password || !formData.confirmPassword) {
+      if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
         setError('All fields are required');
         setLoading(false);
         return;
@@ -41,13 +43,15 @@ export default function Register() {
       }
 
       const response = await authAPI.register(
+        formData.firstName,
+        formData.lastName,
         formData.email,
         formData.password,
         formData.confirmPassword
       );
 
       setSuccess('Registration successful! Redirecting to login...');
-      setFormData({ email: '', password: '', confirmPassword: '' });
+      setFormData({ firstName: '', lastName: '', email: '', password: '', confirmPassword: '' });
       
       setTimeout(() => {
         navigate('/login');
@@ -68,6 +72,34 @@ export default function Register() {
         {success && <div className="alert alert-success-custom">{success}</div>}
         
         <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label htmlFor="firstName" className="form-label">First Name</label>
+            <input
+              type="text"
+              className="form-control"
+              id="firstName"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="Enter your first name"
+              required
+            />
+          </div>
+          
+          <div className="mb-3">
+            <label htmlFor="lastName" className="form-label">Last Name</label>
+            <input
+              type="text"
+              className="form-control"
+              id="lastName"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Enter your last name"
+              required
+            />
+          </div>
+          
           <div className="mb-3">
             <label htmlFor="email" className="form-label">Email Address</label>
             <input
