@@ -13,7 +13,16 @@ const nodemailer = require('nodemailer');
  */
 const sendResetEmail = async (email, resetToken) => {
   try {
-    // Log configuration for debugging
+    // Validate environment variables
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      throw new Error('Email service not properly configured. Please contact support.');
+    }
+
+    if (!process.env.FRONTEND_URL) {
+      throw new Error('Frontend URL not configured. Password reset link cannot be generated.');
+    }
+
+    // Log configuration for debugging (without exposing password)
     console.log('📧 Email Configuration Check:');
     console.log('  SMTP_HOST:', process.env.SMTP_HOST);
     console.log('  SMTP_PORT:', process.env.SMTP_PORT);
@@ -24,8 +33,8 @@ const sendResetEmail = async (email, resetToken) => {
     // Create transporter using environment variables
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: parseInt(process.env.SMTP_PORT) === 465, // true for 465, false for 587
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: parseInt(process.env.SMTP_PORT || '587') === 465, // true for 465, false for 587
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
@@ -44,6 +53,8 @@ const sendResetEmail = async (email, resetToken) => {
 
     // Reset link URL (with token as query parameter)
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    console.log('🔗 Reset Link:', resetUrl);
 
     // Email content
     const mailOptions = {
@@ -64,7 +75,7 @@ const sendResetEmail = async (email, resetToken) => {
             </p>
             <p style="color: #666; font-size: 14px;">
               Or copy and paste this link in your browser:<br>
-              <code style="background-color: #e9ecef; padding: 5px 10px; border-radius: 3px;">${resetUrl}</code>
+              <code style="background-color: #e9ecef; padding: 5px 10px; border-radius: 3px; word-break: break-all;">${resetUrl}</code>
             </p>
             <p style="color: #ff6b6b; font-weight: bold;">
               ⏰ This link will expire in 15 minutes.
@@ -88,13 +99,16 @@ const sendResetEmail = async (email, resetToken) => {
 
     // Send email
     const info = await transporter.sendMail(mailOptions);
-    console.log('✓ Reset email sent to:', email);
+    console.log('✓ Reset email sent successfully');
+    console.log('  To:', email);
     console.log('  Message ID:', info.messageId);
     return true;
   } catch (error) {
-    console.error('✗ Error sending email:', error.message);
-    console.error('✗ Error code:', error.code);
-    console.error('✗ Full error details:', error);
+    console.error('✗ Error sending email:', {
+      message: error.message,
+      code: error.code,
+      name: error.name
+    });
     
     // Provide more helpful error messages
     let userMessage = `Failed to send reset email: ${error.message}`;
@@ -104,6 +118,8 @@ const sendResetEmail = async (email, resetToken) => {
       userMessage = 'Unable to connect to email server. Please try again later.';
     } else if (error.code === 'ETIMEDOUT') {
       userMessage = 'Email server connection timed out. Please try again later.';
+    } else if (error.message.includes('Frontend URL')) {
+      userMessage = 'Email service configuration error. Please contact support.';
     }
     
     throw new Error(userMessage);

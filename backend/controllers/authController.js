@@ -30,6 +30,7 @@ const register = async (req, res) => {
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !confirmPassword) {
+      console.warn('Registration: Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'All fields are required',
@@ -38,6 +39,7 @@ const register = async (req, res) => {
 
     // Validate email format
     if (!validator.isEmail(email)) {
+      console.warn('Registration: Invalid email format -', email);
       return res.status(400).json({
         success: false,
         message: 'Please provide a valid email address',
@@ -46,6 +48,7 @@ const register = async (req, res) => {
 
     // Check password length
     if (password.length < 6) {
+      console.warn('Registration: Password too short');
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 6 characters long',
@@ -54,6 +57,7 @@ const register = async (req, res) => {
 
     // Check if passwords match
     if (password !== confirmPassword) {
+      console.warn('Registration: Passwords do not match');
       return res.status(400).json({
         success: false,
         message: 'Passwords do not match',
@@ -63,6 +67,7 @@ const register = async (req, res) => {
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
+      console.warn('Registration: Email already exists -', email);
       return res.status(400).json({
         success: false,
         message: 'Email already registered',
@@ -81,6 +86,8 @@ const register = async (req, res) => {
     // Save user to database
     await user.save();
 
+    console.log('✓ User registered successfully:', email);
+
     // Generate JWT token
     const token = generateToken(user._id);
 
@@ -97,11 +104,27 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error.message);
+    console.error('✗ Registration error:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Better error messages for common issues
+    let errorMessage = 'Registration failed. Please try again later.';
+    
+    if (error.code === 11000) {
+      errorMessage = 'Email already registered';
+    } else if (error.message.includes('validation')) {
+      errorMessage = 'Invalid registration data. Please check your inputs.';
+    } else if (error.message.includes('connected')) {
+      errorMessage = 'Database connection error. Please try again later.';
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Error during registration',
-      error: error.message,
+      message: errorMessage,
     });
   }
 };
